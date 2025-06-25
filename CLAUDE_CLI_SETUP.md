@@ -1,11 +1,13 @@
 # Claude CLI + OpenAI 임베딩 하이브리드 설정 가이드
 
 ## 개요
+
 이 가이드는 LLM은 Claude CLI로, 임베딩은 OpenAI API로 사용하는 하이브리드 설정을 설명합니다.
 
 ## 사전 요구사항
 
 ### 1. Claude CLI 설치
+
 ```bash
 # Claude CLI 전역 설치
 npm install -g @anthropic-ai/claude-code
@@ -15,6 +17,7 @@ claude login
 ```
 
 ### 2. OpenAI API 키 설정
+
 ```bash
 # 환경변수 설정 (Linux/Mac)
 export OPENAI_API_KEY="your-openai-api-key-here"
@@ -26,30 +29,33 @@ echo "OPENAI_API_KEY=your-openai-api-key-here" >> .env
 ## 설정
 
 ### 1. 기본 설정 (하이브리드 방식)
+
 `openmemory/api/default_config.json`:
+
 ```json
 {
-    "mem0": {
-        "llm": {
-            "provider": "claude_cli",
-            "config": {
-                "model": "sonnet",
-                "temperature": 0.1,
-                "max_tokens": 2000
-            }
-        },
-        "embedder": {
-            "provider": "openai",
-            "config": {
-                "model": "text-embedding-3-small",
-                "api_key": "env:OPENAI_API_KEY"
-            }
-        }
-    }
+	"mem0": {
+		"llm": {
+			"provider": "claude_cli",
+			"config": {
+				"model": "sonnet",
+				"temperature": 0.1,
+				"max_tokens": 2000
+			}
+		},
+		"embedder": {
+			"provider": "openai",
+			"config": {
+				"model": "text-embedding-3-small",
+				"api_key": "env:OPENAI_API_KEY"
+			}
+		}
+	}
 }
 ```
 
 ### 2. 프로그래밍 방식 설정
+
 ```python
 from mem0 import Memory
 
@@ -78,13 +84,15 @@ m = Memory(config=config)
 ## 사용 가능한 모델
 
 ### Claude CLI 모델
-- `sonnet`: Claude 4 Sonnet (균형잡힌 성능, 권장)
-- `opus`: Claude 4 Opus (가장 강력함)
+
+-   `sonnet`: Claude 4 Sonnet (균형잡힌 성능, 권장)
+-   `opus`: Claude 4 Opus (가장 강력함)
 
 ### OpenAI 임베딩 모델
-- `text-embedding-3-small` (기본값, 저렴하고 빠름, $0.00002/1K 토큰)
-- `text-embedding-3-large` (고품질, $0.00013/1K 토큰)
-- `text-embedding-ada-002` (이전 모델, 호환성용)
+
+-   `text-embedding-3-small` (기본값, 저렴하고 빠름, $0.00002/1K 토큰)
+-   `text-embedding-3-large` (고품질, $0.00013/1K 토큰)
+-   `text-embedding-ada-002` (이전 모델, 호환성용)
 
 ## 하이브리드 방식의 장점
 
@@ -104,6 +112,7 @@ m = Memory(config=config)
 ## 문제 해결
 
 ### Claude CLI를 찾을 수 없음
+
 ```bash
 # Claude CLI가 설치되어 있는지 확인
 which claude
@@ -113,6 +122,7 @@ npm install -g @anthropic-ai/claude-code
 ```
 
 ### OpenAI API 키 오류
+
 ```bash
 # API 키가 설정되었는지 확인
 echo $OPENAI_API_KEY
@@ -150,4 +160,16 @@ print(results)
 
 LLM 비용: $0 (Claude CLI 사용)
 총 비용: 기존 OpenAI 전체 사용 대비 90% 이상 절약
+```
+
+```
+"openmemory-local": {
+    "command": "npx",
+    "args": [
+        "-y",
+        "supergateway",
+        "--sse",
+        "http://localhost:8765/mcp/claude/sse/kanghyeonlee"
+    ]
+}
 ```
