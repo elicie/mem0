@@ -33,6 +33,8 @@ def get_categories_for_memory(memory: str) -> List[str]:
         )
 
         parsed: MemoryCategories = completion.choices[0].message.parsed
+        if parsed is None:
+            raise ValueError("OpenAI failed to parse response according to schema")
         return [cat.strip().lower() for cat in parsed.categories]
 
     except Exception as e:
