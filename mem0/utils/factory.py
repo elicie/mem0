@@ -31,6 +31,7 @@ class LlmFactory:
         "lmstudio": "mem0.llms.lmstudio.LMStudioLLM",
         "vllm": "mem0.llms.vllm.VllmLLM",
         "langchain": "mem0.llms.langchain.LangchainLLM",
+        "claude_cli": "mem0.llms.claude_cli.ClaudeCLILLM",
     }
 
     @classmethod

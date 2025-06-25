@@ -5,6 +5,7 @@ import { OpenAIStructuredLLM } from "../llms/openai_structured";
 import { AnthropicLLM } from "../llms/anthropic";
 import { GroqLLM } from "../llms/groq";
 import { MistralLLM } from "../llms/mistral";
+import { ClaudeCLILLM } from "../llms/claude_cli";
 import { MemoryVectorStore } from "../vector_stores/memory";
 import {
   EmbeddingConfig,
@@ -72,6 +73,8 @@ export class LLMFactory {
         return new MistralLLM(config);
       case "langchain":
         return new LangchainLLM(config);
+      case "claude_cli":
+        return new ClaudeCLILLM(config);
       default:
         throw new Error(`Unsupported LLM provider: ${provider}`);
     }
