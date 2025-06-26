@@ -5,7 +5,7 @@ from sqlalchemy.orm import Session, joinedload
 from sqlalchemy import func, desc
 
 from app.database import get_db
-from app.models import App, Memory, MemoryAccessLog, MemoryState
+from app.models import App, Memory, MemoryAccessLog, MemoryState, User
 
 router = APIRouter(prefix="/api/v1/apps", tags=["apps"])
 
@@ -41,12 +41,12 @@ async def list_apps(
         func.count(func.distinct(MemoryAccessLog.memory_id)).label('access_count')
     ).group_by(MemoryAccessLog.app_id).subquery()
 
-    # Base query
+    # Base query with User join - show all users' apps
     query = db.query(
         App,
         func.coalesce(memory_counts.c.memory_count, 0).label('total_memories_created'),
         func.coalesce(access_counts.c.access_count, 0).label('total_memories_accessed')
-    )
+    ).join(User, App.owner_id == User.id)
 
     # Join with subqueries
     query = query.outerjoin(
@@ -79,7 +79,7 @@ async def list_apps(
         query = query.order_by(sort_field)
 
     total = query.count()
-    apps = query.offset((page - 1) * page_size).limit(page_size).all()
+    apps = query.options(joinedload(App.owner)).offset((page - 1) * page_size).limit(page_size).all()
 
     return {
         "total": total,
@@ -89,6 +89,7 @@ async def list_apps(
             {
                 "id": app[0].id,
                 "name": app[0].name,
+                "user_id": app[0].owner.user_id if app[0].owner else None,
                 "is_active": app[0].is_active,
                 "total_memories_created": app[1],
                 "total_memories_accessed": app[2]

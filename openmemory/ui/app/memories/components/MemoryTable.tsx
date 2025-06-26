@@ -224,7 +224,7 @@ export function MemoryTable() {
                 </div>
               </TableCell>
               <TableCell className="w-[140px] text-center">
-                <SourceApp source={memory.app_name} />
+                {memory.user_id || memory.app_name}
               </TableCell>
               <TableCell className="w-[140px] text-center">
                 {formatDate(memory.created_at)}

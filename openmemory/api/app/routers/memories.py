@@ -118,9 +118,8 @@ async def list_memories(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Build base query
+    # Build base query - show all users' memories
     query = db.query(Memory).filter(
-        Memory.user_id == user.id,
         Memory.state != MemoryState.deleted,
         Memory.state != MemoryState.archived,
         Memory.content.ilike(f"%{search_query}%") if search_query else True
@@ -501,9 +500,8 @@ async def filter_memories(
     if not user:
         raise HTTPException(status_code=404, detail="User not found")
 
-    # Build base query
+    # Build base query - show all users' memories
     query = db.query(Memory).filter(
-        Memory.user_id == user.id,
         Memory.state != MemoryState.deleted,
     )
 
@@ -561,9 +559,10 @@ async def filter_memories(
         # Default sorting
         query = query.order_by(Memory.created_at.desc())
 
-    # Add eager loading for categories and make the query distinct
+    # Add eager loading for categories and user, and make the query distinct
     query = query.options(
-        joinedload(Memory.categories)
+        joinedload(Memory.categories),
+        joinedload(Memory.user)
     ).distinct(Memory.id)
 
     # Use fastapi-pagination's paginate function
@@ -578,6 +577,7 @@ async def filter_memories(
                 state=memory.state.value,
                 app_id=memory.app_id,
                 app_name=memory.app.name if memory.app else None,
+                user_id=memory.user.user_id if memory.user else None,
                 categories=[category.name for category in memory.categories],
                 metadata_=memory.metadata_
             )
@@ -607,16 +607,16 @@ async def get_related_memories(
     if not category_ids:
         return Page.create([], total=0, params=params)
     
-    # Build query for related memories
+    # Build query for related memories - show all users' memories
     query = db.query(Memory).distinct(Memory.id).filter(
-        Memory.user_id == user.id,
         Memory.id != memory_id,
         Memory.state != MemoryState.deleted
     ).join(Memory.categories).filter(
         Category.id.in_(category_ids)
     ).options(
         joinedload(Memory.categories),
-        joinedload(Memory.app)
+        joinedload(Memory.app),
+        joinedload(Memory.user)
     ).order_by(
         func.count(Category.id).desc(),
         Memory.created_at.desc()
@@ -636,6 +636,7 @@ async def get_related_memories(
                 state=memory.state.value,
                 app_id=memory.app_id,
                 app_name=memory.app.name if memory.app else None,
+                user_id=memory.user.user_id if memory.user else None,
                 categories=[category.name for category in memory.categories],
                 metadata_=memory.metadata_
             )
