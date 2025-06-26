@@ -83,58 +83,46 @@ async def add_memories(text: str) -> str:
             if not app.is_active:
                 return f"Error: App {app.name} is currently paused on OpenMemory. Cannot create new memories."
 
-            response = memory_client.add(text,
-                                         user_id=uid,
-                                         metadata={
-                                            "source_app": "openmemory",
-                                            "mcp_client": client_name,
-                                        })
-
-            # Process the response and update database
-            if isinstance(response, dict) and 'results' in response:
-                for result in response['results']:
-                    memory_id = uuid.UUID(result['id'])
-                    memory = db.query(Memory).filter(Memory.id == memory_id).first()
-
-                    if result['event'] == 'ADD':
-                        if not memory:
-                            memory = Memory(
-                                id=memory_id,
-                                user_id=user.id,
-                                app_id=app.id,
-                                content=result['memory'],
-                                state=MemoryState.active
-                            )
-                            db.add(memory)
-                        else:
-                            memory.state = MemoryState.active
-                            memory.content = result['memory']
-
-                        # Create history entry
-                        history = MemoryStatusHistory(
-                            memory_id=memory_id,
-                            changed_by=user.id,
-                            old_state=MemoryState.deleted if memory else None,
-                            new_state=MemoryState.active
-                        )
-                        db.add(history)
-
-                    elif result['event'] == 'DELETE':
-                        if memory:
-                            memory.state = MemoryState.deleted
-                            memory.deleted_at = datetime.datetime.now(datetime.UTC)
-                            # Create history entry
-                            history = MemoryStatusHistory(
-                                memory_id=memory_id,
-                                changed_by=user.id,
-                                old_state=MemoryState.active,
-                                new_state=MemoryState.deleted
-                            )
-                            db.add(history)
-
-                db.commit()
-
-            return response
+            # Create memory directly without LLM processing
+            memory_id = uuid.uuid4()
+            memory = Memory(
+                id=memory_id,
+                user_id=user.id,
+                app_id=app.id,
+                content=text,  # Store original text as-is
+                metadata_={"source_app": "openmemory", "mcp_client": client_name},
+                state=MemoryState.active
+            )
+            db.add(memory)
+            
+            # Add to vector store for similarity search
+            try:
+                embeddings = memory_client.embedding_model.embed(text, "add")
+                memory_client.vector_store.add(
+                    vectors=[embeddings],
+                    payloads=[{
+                        "data": text,
+                        "user_id": uid,
+                        "metadata": {"source_app": "openmemory", "mcp_client": client_name},
+                        "created_at": memory.created_at.isoformat(),
+                        "id": str(memory_id)
+                    }],
+                    ids=[str(memory_id)]
+                )
+            except Exception as vector_error:
+                logging.warning(f"Failed to add to vector store: {vector_error}")
+            
+            # Create history entry
+            history = MemoryStatusHistory(
+                memory_id=memory_id,
+                changed_by=user.id,
+                old_state=None,
+                new_state=MemoryState.active
+            )
+            db.add(history)
+            
+            db.commit()
+            return f"Memory stored successfully: {text}"
         finally:
             db.close()
     except Exception as e:

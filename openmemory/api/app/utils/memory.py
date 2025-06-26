@@ -145,15 +145,6 @@ def get_default_memory_config():
                 "port": 6333,
             }
         },
-        "llm": {
-            "provider": "openai",
-            "config": {
-                "model": "gpt-4o-mini",
-                "temperature": 0.1,
-                "max_tokens": 2000,
-                "api_key": "env:OPENAI_API_KEY"
-            }
-        },
         "embedder": {
             "provider": "openai",
             "config": {
@@ -228,13 +219,7 @@ def get_memory_client(custom_instructions: str = None):
                 if "mem0" in json_config:
                     mem0_config = json_config["mem0"]
                     
-                    # Update LLM configuration if available
-                    if "llm" in mem0_config and mem0_config["llm"] is not None:
-                        config["llm"] = mem0_config["llm"]
-                        
-                        # Fix Ollama URLs for Docker if needed
-                        if config["llm"].get("provider") == "ollama":
-                            config["llm"] = _fix_ollama_urls(config["llm"])
+                    # Skip LLM configuration - using Claude CLI instead
                     
                     # Update Embedder configuration if available
                     if "embedder" in mem0_config and mem0_config["embedder"] is not None:
