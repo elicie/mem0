@@ -95,7 +95,7 @@ def get_accessible_memory_ids(db: Session, app_id: UUID) -> Set[UUID]:
 # List all memories with filtering
 @router.get("/", response_model=Page[MemoryResponse])
 async def list_memories(
-    user_id: str,
+    user_id: Optional[str] = None,
     app_id: Optional[UUID] = None,
     from_date: Optional[int] = Query(
         None,
@@ -114,16 +114,19 @@ async def list_memories(
     sort_direction: Optional[str] = Query(None, description="Sort direction (asc or desc)"),
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.user_id == user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     # Build base query - show all users' memories
     query = db.query(Memory).filter(
         Memory.state != MemoryState.deleted,
         Memory.state != MemoryState.archived,
         Memory.content.ilike(f"%{search_query}%") if search_query else True
     )
+    
+    # Filter by user if user_id is provided
+    if user_id:
+        user = db.query(User).filter(User.user_id == user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        query = query.filter(Memory.user_id == user.id)
 
     # Apply filters
     if app_id:
@@ -137,8 +140,9 @@ async def list_memories(
         to_datetime = datetime.fromtimestamp(to_date, tz=UTC)
         query = query.filter(Memory.created_at <= to_datetime)
 
-    # Add joins for app and categories after filtering
+    # Add joins for app, user and categories after filtering
     query = query.outerjoin(App, Memory.app_id == App.id)
+    query = query.outerjoin(User, Memory.user_id == User.id)
     query = query.outerjoin(Memory.categories)
 
     # Apply category filter if provided
@@ -146,25 +150,29 @@ async def list_memories(
         category_list = [c.strip() for c in categories.split(",")]
         query = query.filter(Category.name.in_(category_list))
 
+    # Apply permissions filtering at query level
+    # Only show active memories
+    query = query.filter(Memory.state == MemoryState.active)
+    
+    # If app_id is provided for permissions, ensure the app is active
+    if app_id:
+        query = query.filter(App.is_active == True)
+
     # Apply sorting if specified
     if sort_column:
         sort_field = getattr(Memory, sort_column, None)
         if sort_field:
             query = query.order_by(sort_field.desc()) if sort_direction == "desc" else query.order_by(sort_field.asc())
 
+    # Add eager loading for related objects
+    query = query.options(
+        joinedload(Memory.categories),
+        joinedload(Memory.app),
+        joinedload(Memory.user)
+    )
 
-    # Get paginated results
+    # Get paginated results (permissions already applied in query)
     paginated_results = sqlalchemy_paginate(query, params)
-
-    # Filter results based on permissions
-    filtered_items = []
-    for item in paginated_results.items:
-        if check_memory_access_permissions(db, item, app_id):
-            filtered_items.append(item)
-
-    # Update paginated results with filtered items
-    paginated_results.items = filtered_items
-    paginated_results.total = len(filtered_items)
 
     return paginated_results
 
@@ -305,9 +313,18 @@ async def create_memory(
 @router.get("/{memory_id}")
 async def get_memory(
     memory_id: UUID,
+    user_id: Optional[str] = None,
     db: Session = Depends(get_db)
 ):
-    memory = get_memory_or_404(db, memory_id)
+    memory = db.query(Memory).options(
+        joinedload(Memory.app),
+        joinedload(Memory.user),
+        joinedload(Memory.categories)
+    ).filter(Memory.id == memory_id).first()
+    
+    if not memory:
+        raise HTTPException(status_code=404, detail="Memory not found")
+    
     return {
         "id": memory.id,
         "text": memory.content,
@@ -315,6 +332,7 @@ async def get_memory(
         "state": memory.state.value,
         "app_id": memory.app_id,
         "app_name": memory.app.name if memory.app else None,
+        "user_id": memory.user.user_id if memory.user else None,
         "categories": [category.name for category in memory.categories],
         "metadata_": memory.metadata_
     }
@@ -479,7 +497,7 @@ async def update_memory(
     return memory
 
 class FilterMemoriesRequest(BaseModel):
-    user_id: str
+    user_id: Optional[str] = None
     page: int = 1
     size: int = 10
     search_query: Optional[str] = None
@@ -496,14 +514,17 @@ async def filter_memories(
     request: FilterMemoriesRequest,
     db: Session = Depends(get_db)
 ):
-    user = db.query(User).filter(User.user_id == request.user_id).first()
-    if not user:
-        raise HTTPException(status_code=404, detail="User not found")
-
     # Build base query - show all users' memories
     query = db.query(Memory).filter(
         Memory.state != MemoryState.deleted,
     )
+    
+    # Filter by user if user_id is provided
+    if request.user_id:
+        user = db.query(User).filter(User.user_id == request.user_id).first()
+        if not user:
+            raise HTTPException(status_code=404, detail="User not found")
+        query = query.filter(Memory.user_id == user.id)
 
     # Filter archived memories based on show_archived parameter
     if not request.show_archived:
@@ -517,8 +538,9 @@ async def filter_memories(
     if request.app_ids:
         query = query.filter(Memory.app_id.in_(request.app_ids))
 
-    # Add joins for app and categories
+    # Add joins for app, user and categories
     query = query.outerjoin(App, Memory.app_id == App.id)
+    query = query.outerjoin(User, Memory.user_id == User.id)
 
     # Apply category filter
     if request.category_ids:
@@ -559,9 +581,10 @@ async def filter_memories(
         # Default sorting
         query = query.order_by(Memory.created_at.desc())
 
-    # Add eager loading for categories and user, and make the query distinct
+    # Add eager loading for categories, app, and user - make the query distinct
     query = query.options(
         joinedload(Memory.categories),
+        joinedload(Memory.app),
         joinedload(Memory.user)
     ).distinct(Memory.id)
 
