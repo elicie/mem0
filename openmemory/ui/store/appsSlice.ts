@@ -32,6 +32,7 @@ export interface AppDetails {
 export interface App {
   id: string;
   name: string;
+  user_id?: string;
   total_memories_created: number;
   total_memories_accessed: number;
   is_active?: boolean;

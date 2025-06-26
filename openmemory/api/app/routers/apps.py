@@ -46,7 +46,7 @@ async def list_apps(
         App,
         func.coalesce(memory_counts.c.memory_count, 0).label('total_memories_created'),
         func.coalesce(access_counts.c.access_count, 0).label('total_memories_accessed')
-    )
+    ).options(joinedload(App.owner))
 
     # Join with subqueries
     query = query.outerjoin(
@@ -89,6 +89,7 @@ async def list_apps(
             {
                 "id": app[0].id,
                 "name": app[0].name,
+                "user_id": app[0].owner.user_id if app[0].owner else None,
                 "is_active": app[0].is_active,
                 "total_memories_created": app[1],
                 "total_memories_accessed": app[2]

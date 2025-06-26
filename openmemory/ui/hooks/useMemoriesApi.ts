@@ -13,6 +13,7 @@ export interface SimpleMemory {
   state: string;
   categories: string[];
   app_name: string;
+  user_id?: string;
 }
 
 // Define the shape of the API response item
@@ -25,6 +26,7 @@ interface ApiMemoryItem {
   categories: string[];
   metadata_?: Record<string, any>;
   app_name: string;
+  user_id?: string;
 }
 
 // Define the shape of the API response
@@ -124,7 +126,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
       const response = await axios.post<ApiResponse>(
         `${URL}/api/v1/memories/filter`,
         {
-          user_id: user_id,
+          // user_id: user_id,  // Remove user_id to show all users' memories
           page: page,
           size: size,
           search_query: query,
@@ -144,7 +146,8 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
         metadata: item.metadata_,
         categories: item.categories as Category[],
         client: 'api',
-        app_name: item.app_name
+        app_name: item.app_name,
+        user_id: item.user_id
       }));
       setIsLoading(false);
       dispatch(setMemoriesSuccess(adaptedMemories));
@@ -200,7 +203,7 @@ export const useMemoriesApi = (): UseMemoriesApiReturn => {
     setError(null);
     try {
       const response = await axios.get<SimpleMemory>(
-        `${URL}/api/v1/memories/${memoryId}?user_id=${user_id}`
+        `${URL}/api/v1/memories/${memoryId}`
       );
       setIsLoading(false);
       dispatch(setSelectedMemory(response.data));

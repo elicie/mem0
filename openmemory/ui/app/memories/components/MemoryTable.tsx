@@ -140,7 +140,7 @@ export function MemoryTable() {
             <TableHead className="w-[140px] border-zinc-700">
               <div className="flex items-center">
                 <GoPackage className="mr-1" />
-                Source App
+                User ID
               </div>
             </TableHead>
             <TableHead className="w-[140px] border-zinc-700">
@@ -224,7 +224,9 @@ export function MemoryTable() {
                 </div>
               </TableCell>
               <TableCell className="w-[140px] text-center">
-                <SourceApp source={memory.app_name} />
+                <div className="text-sm text-zinc-300 font-mono">
+                  {memory.user_id || memory.app_name}
+                </div>
               </TableCell>
               <TableCell className="w-[140px] text-center">
                 {formatDate(memory.created_at)}

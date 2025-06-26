@@ -106,26 +106,10 @@ export function MemoryDetails({ memory_id }: MemoryDetailsProps) {
                     <div className="flex items-center gap-2">
                       <div className="flex items-center gap-1 bg-zinc-700 px-3 py-1 rounded-lg">
                         <span className="text-sm text-zinc-400">
-                          Created by:
+                          User:
                         </span>
-                        <div className="w-4 h-4 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
-                          <Image
-                            src={
-                              constants[
-                                memory?.app_name as keyof typeof constants
-                              ]?.iconImage || ""
-                            }
-                            alt="OpenMemory"
-                            width={24}
-                            height={24}
-                          />
-                        </div>
-                        <p className="text-sm text-zinc-100 font-semibold">
-                          {
-                            constants[
-                              memory?.app_name as keyof typeof constants
-                            ]?.name
-                          }
+                        <p className="text-sm text-zinc-100 font-semibold font-mono">
+                          {memory?.user_id || memory?.app_name}
                         </p>
                       </div>
                     </div>

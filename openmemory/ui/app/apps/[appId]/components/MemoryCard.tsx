@@ -11,6 +11,7 @@ interface MemoryCardProps {
   categories?: string[];
   access_count?: number;
   app_name: string;
+  user_id?: string;
   state: string;
 }
 
@@ -22,6 +23,7 @@ export function MemoryCard({
   categories,
   access_count,
   app_name,
+  user_id,
   state,
 }: MemoryCardProps) {
   return (
@@ -87,23 +89,12 @@ export function MemoryCard({
               <ArrowRight className="ml-2 h-4 w-4" />
             </Link>
           )}
-          {app_name && (
+          {(user_id || app_name) && (
             <div className="flex items-center gap-2">
               <div className="flex items-center gap-1 bg-zinc-700 px-3 py-1 rounded-lg">
-                <span className="text-sm text-zinc-400">Created by:</span>
-                <div className="w-5 h-5 rounded-full bg-zinc-700 flex items-center justify-center overflow-hidden">
-                  <Image
-                    src={
-                      constants[app_name as keyof typeof constants]
-                        ?.iconImage || ""
-                    }
-                    alt="OpenMemory"
-                    width={24}
-                    height={24}
-                  />
-                </div>
-                <p className="text-sm text-zinc-100 font-semibold">
-                  {constants[app_name as keyof typeof constants]?.name}
+                <span className="text-sm text-zinc-400">User:</span>
+                <p className="text-sm text-zinc-100 font-semibold font-mono">
+                  {user_id || app_name}
                 </p>
               </div>
             </div>
